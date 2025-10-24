@@ -1,0 +1,46 @@
+signal_generation:
+  sample_rate: 1000000
+  duration: 0.001
+  num_samples: 1000
+  signal_types:
+    - pulse
+    - chirp
+    - fsk
+    - psk
+    - noise
+    - qam
+
+feature_extraction:
+  time_domain:
+    - mean
+    - std
+    - variance
+    - peak_amplitude
+    - rms
+    - zero_crossing_rate
+  frequency_domain:
+    - spectral_centroid
+    - spectral_bandwidth
+    - dominant_frequency
+
+ml_models:
+  train_test_split: 0.2
+  validation_split: 0.1
+  random_state: 42
+  random_forest:
+    n_estimators: 100
+    max_depth: 20
+  svm:
+    kernel: rbf
+    C: 1.0
+
+anomaly_detection:
+  contamination: 0.1
+  methods:
+    - isolation_forest
+    - one_class_svm
+
+paths:
+  data_raw: data/raw
+  data_processed: data/processed
+  models: models/trained
