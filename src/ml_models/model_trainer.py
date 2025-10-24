@@ -64,6 +64,26 @@ class SignalClassifier:
         """
         print("\nPreparing data...")
         
+        # Handle NaN values in features
+        print("  Checking for NaN values...")
+        nan_count = np.sum(np.isnan(self.features))
+        if nan_count > 0:
+            print(f"  Found {nan_count} NaN values, replacing with column means...")
+            
+            # Replace NaN with column means
+            col_means = np.nanmean(self.features, axis=0)
+            # If entire column is NaN, use 0
+            col_means[np.isnan(col_means)] = 0
+            
+            # Replace NaN values
+            nan_mask = np.isnan(self.features)
+            for col in range(self.features.shape[1]):
+                col_mask = nan_mask[:, col]
+                if np.any(col_mask):
+                    self.features[col_mask, col] = col_means[col]
+            
+            print(f"  ✓ NaN values handled")
+        
         # Encode labels (convert text to numbers)
         self.labels_encoded = self.label_encoder.fit_transform(self.labels)
         self.label_names = self.label_encoder.classes_

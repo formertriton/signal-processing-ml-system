@@ -5,9 +5,13 @@ Trains anomaly detectors and identifies unusual signals
 
 import numpy as np
 import pickle
-from anomaly_detector import AnomalyDetector
 import sys
 import os
+
+# Add parent directory to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from anomaly_detector import AnomalyDetector
 
 # Add parent directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))

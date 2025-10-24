@@ -10,14 +10,14 @@ import sys
 import os
 import matplotlib.pyplot as plt
 from scipy import signal as scipy_signal
+import joblib
 
 # Add src to path
 sys.path.append('src')
+sys.path.append('src/anomaly_detection')
 
 from signal_generation.signal_generator import SignalGenerator
 from feature_extraction.feature_extractor import FeatureExtractor
-from anomaly_detection.anomaly_detector import AnomalyDetector
-import joblib
 
 
 # Page config
@@ -48,38 +48,68 @@ page = st.sidebar.radio("Choose a module:", [
 def load_models():
     """Load all trained models"""
     try:
-        # Load classifier
         models_dir = 'models/trained'
-        model_files = [f for f in os.listdir(models_dir) if f.startswith('random_forest')]
-        if model_files:
-            rf_model = joblib.load(os.path.join(models_dir, model_files[0]))
+        
+        # Check if directory exists
+        if not os.path.exists(models_dir):
+            st.sidebar.error("❌ Models directory not found")
+            return None, None, None, None
+        
+        files = os.listdir(models_dir)
+        
+        # Load Random Forest classifier
+        rf_files = [f for f in files if 'random_forest' in f and f.endswith('.pkl')]
+        if rf_files:
+            rf_path = os.path.join(models_dir, sorted(rf_files)[-1])
+            rf_model = joblib.load(rf_path)
+            st.sidebar.success(f"✓ RF Model loaded")
         else:
             rf_model = None
+            st.sidebar.warning("⚠ Random Forest not found")
         
         # Load label encoder
-        encoder_files = [f for f in os.listdir(models_dir) if f.startswith('label_encoder')]
+        encoder_files = [f for f in files if 'label_encoder' in f and f.endswith('.pkl')]
         if encoder_files:
-            label_encoder = joblib.load(os.path.join(models_dir, encoder_files[0]))
+            encoder_path = os.path.join(models_dir, sorted(encoder_files)[-1])
+            label_encoder = joblib.load(encoder_path)
+            st.sidebar.success(f"✓ Label Encoder loaded")
         else:
             label_encoder = None
+            st.sidebar.warning("⚠ Label Encoder not found")
         
         # Load scaler
-        scaler_files = [f for f in os.listdir(models_dir) if f.startswith('scaler')]
+        scaler_files = [f for f in files if 'scaler' in f and f.endswith('.pkl')]
         if scaler_files:
-            scaler = joblib.load(os.path.join(models_dir, scaler_files[0]))
+            scaler_path = os.path.join(models_dir, sorted(scaler_files)[-1])
+            scaler = joblib.load(scaler_path)
+            st.sidebar.success(f"✓ Scaler loaded")
         else:
             scaler = None
+            st.sidebar.warning("⚠ Scaler not found")
         
-        # Load anomaly detector
-        anomaly_files = [f for f in os.listdir(models_dir) if 'anomaly_detector' in f]
-        if anomaly_files:
-            anomaly_detector = AnomalyDetector.load(os.path.join(models_dir, anomaly_files[0]))
-        else:
+        # Load/train anomaly detector fresh
+        anomaly_detector = None
+        try:
+            feature_path = 'data/processed/processed_features_latest.pkl'
+            if os.path.exists(feature_path):
+                from anomaly_detector import AnomalyDetector
+                
+                with open(feature_path, 'rb') as f:
+                    feature_data = pickle.load(f)
+                
+                anomaly_detector = AnomalyDetector(contamination=0.1)
+                anomaly_detector.fit(feature_data['features'])
+                st.sidebar.success(f"✓ Anomaly Detector trained")
+            else:
+                st.sidebar.warning("⚠ Feature data not found for anomaly detector")
+        except Exception as e:
+            st.sidebar.warning(f"⚠ Anomaly Detector: {str(e)}")
             anomaly_detector = None
         
         return rf_model, label_encoder, scaler, anomaly_detector
+        
     except Exception as e:
-        st.error(f"Error loading models: {e}")
+        st.sidebar.error(f"Error: {str(e)}")
         return None, None, None, None
 
 
@@ -248,7 +278,7 @@ elif page == "🤖 ML Classification":
     
     rf_model, label_encoder, scaler, _ = load_models()
     
-    if rf_model is None:
+    if rf_model is None or label_encoder is None or scaler is None:
         st.error("❌ Models not found! Please train models first by running train_models.py")
     else:
         signal_type = st.selectbox("Select Signal Type to Classify", 
@@ -281,9 +311,12 @@ elif page == "🤖 ML Classification":
                 # Handle NaN
                 nan_mask = np.isnan(feature_vector)
                 if np.any(nan_mask):
+                    feature_vector = feature_vector.copy()
                     col_means = np.nanmean(feature_vector, axis=0)
                     col_means[np.isnan(col_means)] = 0
-                    feature_vector[nan_mask] = np.take(col_means, nan_mask[1])
+                    for col in range(feature_vector.shape[1]):
+                        if nan_mask[0, col]:
+                            feature_vector[0, col] = col_means[col]
                 
                 # Scale and predict
                 feature_scaled = scaler.transform(feature_vector)
@@ -326,7 +359,7 @@ elif page == "⚠️ Anomaly Detection":
     _, _, _, anomaly_detector = load_models()
     
     if anomaly_detector is None:
-        st.error("❌ Anomaly detector not found! Please run detect_anomalies.py first")
+        st.error("❌ Anomaly detector not found! Please run extract_features.py first to create processed features")
     else:
         signal_type = st.selectbox("Generate Signal to Check", 
                                    ["pulse", "chirp", "fsk", "psk", "qam", "noise"])
@@ -398,8 +431,8 @@ elif page == "📊 Full Pipeline Demo":
     
     rf_model, label_encoder, scaler, anomaly_detector = load_models()
     
-    if rf_model is None or anomaly_detector is None:
-        st.error("❌ Models not found! Please train models first.")
+    if rf_model is None or anomaly_detector is None or label_encoder is None or scaler is None:
+        st.error("❌ Models not found! Please train models and extract features first.")
     else:
         signal_type = st.selectbox("Select Signal Type", 
                                    ["pulse", "chirp", "fsk", "psk", "qam", "noise"])
@@ -439,9 +472,12 @@ elif page == "📊 Full Pipeline Demo":
             # Handle NaN
             nan_mask = np.isnan(feature_vector)
             if np.any(nan_mask):
+                feature_vector = feature_vector.copy()
                 col_means = np.nanmean(feature_vector, axis=0)
                 col_means[np.isnan(col_means)] = 0
-                feature_vector[nan_mask] = np.take(col_means, nan_mask[1])
+                for col in range(feature_vector.shape[1]):
+                    if nan_mask[0, col]:
+                        feature_vector[0, col] = col_means[col]
             
             # Step 3: Classify
             status_text.text("Step 3/4: Classifying signal...")
