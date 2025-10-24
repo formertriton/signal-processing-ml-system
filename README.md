@@ -18,6 +18,9 @@ This system demonstrates comprehensive signal processing and machine learning ca
 - **⚠️ Anomaly Detection**: Multiple detection algorithms for identifying suspicious signals
 - **📊 Interactive Dashboard**: Real-time visualization and analysis
 
+  <img width="1464" height="848" alt="Screenshot 2025-10-24 120829" src="https://github.com/user-attachments/assets/735c2bb9-c43a-4f4d-aae5-95b48037a20b" />
+
+
 ## 🚀 Key Features
 
 ### Signal Processing
