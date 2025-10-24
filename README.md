@@ -188,9 +188,9 @@ MIT License - See [LICENSE](LICENSE) file for details
 
 ## 📧 Contact
 
-**Maxim** - [@formertriton](https://github.com/formertriton)
+**Angelo R.** - [@formertriton](https://github.com/formertriton)
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Built with Python, NumPy, SciPy, Scikit-learn, and TensorFlow
 - Signal processing theory from IEEE standards
